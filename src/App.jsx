@@ -9,35 +9,66 @@ function App() {
   const [view, setView] = useState('search'); // search | loading | results
   const [results, setResults] = useState(null);
 
-  const handleSearch = (identifier, sources) => {
+  const handleSearch = async (identifier, sources) => {
     setView('loading');
 
-    // Simular el proceso de scraping (incluyendo el rate limit ético de 12s)
-    setTimeout(() => {
-      const mockResults = {
-        identifier,
-        sri: sources.sri ? {
-          razonSocial: "EMPRESA DE PRUEBA S.A.",
-          ruc: identifier.length === 13 ? identifier : identifier + "001",
-          estado: "ACTIVO",
-          actividad: "VENTA DE PRODUCTOS TECNOLÓGICOS"
-        } : null,
-        ant: sources.ant ? {
-          placa: identifier.length <= 7 ? identifier : "ABC-1234",
-          propietario: "JUAN PEREZ",
-          multas: "45.50"
-        } : null,
-        property: sources.property ? {
-          items: [
-            { tipo: "Departamento", ubicacion: "Quito, Sector Carolina" },
-            { tipo: "Terreno", ubicacion: "Valle de los Chillos" }
-          ]
-        } : null
-      };
+    try {
+      const resultsData = { identifier, sri: null, ant: null, property: null };
 
-      setResults(mockResults);
+      // Consulta SRI
+      if (sources.sri) {
+        try {
+          const sriResponse = await fetch(`http://localhost:3001/consultar-sri?ruc=${identifier}`);
+          const sriData = await sriResponse.json();
+          if (sriData.estado === 'exitoso') {
+            resultsData.sri = {
+              razonSocial: sriData.datosContribuyente.razonSocial,
+              ruc: sriData.ruc,
+              estado: sriData.datosContribuyente.estado,
+              actividad: sriData.datosContribuyente.actividadEconomicaPrincipal
+            };
+          }
+        } catch (err) {
+          console.error("Error consultando SRI:", err);
+        }
+      }
+
+      // Consulta Registro de la Propiedad (RP)
+      if (sources.property) {
+        try {
+          // Usamos la cédula (10 dígitos) o los primeros 10 del RUC
+          const ci = identifier.length > 10 ? identifier.substring(0, 10) : identifier;
+          const rpResponse = await fetch(`http://localhost:3001/consultar-rp?ci=${ci}`);
+          const rpData = await rpResponse.json();
+          if (rpData.success) {
+            resultsData.property = {
+              items: rpData.registros.map(reg => ({
+                tipo: reg.tipo_estado,
+                ubicacion: reg.detalle || "Loja (Referencia)"
+              }))
+            };
+          }
+        } catch (err) {
+          console.error("Error consultando RP:", err);
+        }
+      }
+
+      // ANT - Pendiente (Simulado por ahora)
+      if (sources.ant) {
+        resultsData.ant = {
+          placa: identifier.length <= 7 ? identifier : "ABC-1234",
+          propietario: "USUARIO CONSULTADO",
+          multas: "0.00"
+        };
+      }
+
+      setResults({ ...resultsData, selectedSources: sources });
       setView('results');
-    }, 3000);
+    } catch (error) {
+      console.error("Error general en la búsqueda:", error);
+      alert("Ocurrió un error al conectar con los servicios de scraping.");
+      setView('search');
+    }
   };
 
   return (

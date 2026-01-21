@@ -61,26 +61,36 @@
     font-weight: 600;
 }
 
-.data-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.8rem 0;
+.results-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.results-table th,
+.results-table td {
+    padding: 0.8rem;
+    text-align: left;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.data-row:last-child {
-    border-bottom: none;
-}
-
-.data-row dt {
+.results-table th {
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-weight: 500;
+    width: 40%;
 }
 
-.data-row dd {
-    font-weight: 500;
-    font-size: 0.9rem;
-    text-align: right;
+.results-table td {
+    font-weight: 400;
+}
+
+.results-table thead th {
+    background: rgba(255, 255, 255, 0.03);
+    color: white;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05rem;
 }
 
 .status-badge {
