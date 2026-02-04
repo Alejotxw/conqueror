@@ -1,4 +1,4 @@
-# CONQUEROR
+# CONQUEROR (Actualizado el 04/02/2026)
 
 Este es un proyecto enfocado en crear un sistema de consulta de datos públicos basado en cédula o RUC. El frontend actúa como un buscador intuitivo, el backend procesa las solicitudes y maneja el scraping, y los scrapers extraen datos de sitios web específicos de manera ética y eficiente.
 
