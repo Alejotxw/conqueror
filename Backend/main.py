@@ -1,9 +1,17 @@
-from fastapi import FastAPI, HTTPException
+import os
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
-import httpx # Importante para hacer peticiones al servidor de Node.js
+import httpx
+from openai import AsyncOpenAI
+
+load_dotenv()
 
 app = FastAPI(title="Backend de Consultas Ecuador")
-
+client_deepseek = AsyncOpenAI(
+    api_key=os.getenv("DEEPSEEK_API_KEY"),
+    base_url="https://api.deepseek.com"
+)
 # 1. Configuración de CORS
 # Esto permite que tu Frontend (usualmente en el puerto 5173 con Vite) 
 # pueda hacer peticiones a este Backend sin ser bloqueado.
@@ -12,7 +20,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3001", # Agregado según tu error
-        "http://localhost:5173", # Puerto por defecto de Vite
+        "http://localhost:5173",
+        "http://localhost:3000", # Puerto por defecto de Vite
     ], 
     allow_credentials=True,
     allow_methods=["*"],
@@ -22,6 +31,30 @@ app.add_middleware(
 # 2. URL del servicio de Scraping (Node.js)
 # Asegúrate de que tu server.js esté corriendo en este puerto.
 SCRAPER_SERVICE_URL = "http://127.0.0.1:3001/api"
+
+@app.post("/consultar/analizar")
+async def analizar_informacion(data: dict = Body(...)):
+    """
+    Recibe los datos obtenidos de SRI/ANT/RP y los analiza con DeepSeek
+    """
+    try:
+        # Convertimos el diccionario de datos a un texto legible para la IA
+        texto_para_analizar = str(data)
+        
+        response = await client_deepseek.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": "Eres un analista experto en seguridad e inteligencia. Genera un perfil biográfico y profesional detallado basado en los datos proporcionados (SRI, ANT, Registros). Formatea el resultado para un reporte oficial."},
+                {"role": "user", "content": f"Analiza estos datos: {texto_para_analizar}"}
+            ],
+            stream=False
+        )
+        
+        return {"analisis": response.choices[0].message.content}
+        
+    except Exception as e:
+        print(f"Error DeepSeek: {e}")
+        raise HTTPException(status_code=500, detail="Error al procesar el análisis con Inteligencia Artificial")
 
 @app.get("/")
 async def root():
