@@ -94,16 +94,18 @@ body {
 
 /* Neon & Tech Additions */
 .neon-title {
-  color: #fff !important;
-  text-shadow:
-    0 0 5px #fff,
-    0 0 10px #fff,
-    0 0 20px var(--uide-orange),
-    0 0 30px var(--uide-orange),
-    0 0 40px var(--uide-orange);
-  -webkit-text-fill-color: #fff !important;
-  letter-spacing: 5px !important;
+  font-size: 6.5rem;
   font-weight: 900;
+  margin: 0;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: -4px;
+  background: linear-gradient(180deg, #870a42 30%, #870a42 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 30px rgba(255, 140, 0, 0.5));
+  transform: skewX(-5deg);
+  animation: title-entrance 1s ease-out;
 }
 
 .side-light-orange {

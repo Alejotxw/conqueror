@@ -2,6 +2,7 @@ import { useState } from 'react'
 import EstablecimientosTable from './EstablecimientosTable';
 import AntTable from './AntTable';
 import RpTable from './RpTable';
+import { jsPDF } from "jspdf";
 
 // Elegant SVG Icons
 const IconSRI = () => (
@@ -29,9 +30,87 @@ function App() {
   const [results, setResults] = useState({ sri: null, ant: null, rp: null });
   const [loading, setLoading] = useState({ sri: false, ant: false, rp: false });
   const [searched, setSearched] = useState(false); // To show "No results" or initial state
-
   const [showTableSRI, setShowTableSRI] = useState(false);
 
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const handleAiAnalysis = async () => {
+  setAiLoading(true);
+  try {
+    const response = await fetch('http://localhost:8000/consultar/analizar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(results) 
+    });
+    
+    const data = await response.json();
+    // Limpiamos los asteriscos que a veces envía la IA por error
+    const textoLimpio = data.analisis.replace(/\*\*/g, '');
+
+    const doc = new jsPDF({
+      orientation: 'p',
+      unit: 'cm',
+      format: 'letter'
+    });
+
+    const margin = 2.54; // Margen APA 7
+    const pageWidth = 21.59;
+    const contentWidth = pageWidth - (margin * 2);
+    let cursorY = margin + 1;
+
+    // 1. Numeración de página (Superior derecha)
+    doc.setFont("times", "normal");
+    doc.setFontSize(12);
+    doc.text("1", 19, 1.5);
+
+    // 2. Título del reporte (Negrita Real)
+    doc.setFont("times", "bold");
+    const tituloPrincipal = "Reporte de Análisis de Inteligencia de Datos";
+    const titleWidth = doc.getTextWidth(tituloPrincipal);
+    doc.text(tituloPrincipal, (pageWidth - titleWidth) / 2, cursorY);
+    
+    cursorY += 1.5; // Espaciado doble APA
+
+    // 3. Procesamiento del cuerpo del texto
+    doc.setFont("times", "normal");
+    const parrafos = textoLimpio.split('\n');
+
+    parrafos.forEach(parrafo => {
+      if (parrafo.trim() === "") return;
+
+      // Detectar si el párrafo parece un subtítulo (líneas cortas o mayúsculas)
+      if (parrafo.length < 60 && !parrafo.endsWith('.')) {
+        doc.setFont("times", "bold");
+      } else {
+        doc.setFont("times", "normal");
+      }
+
+      const lineas = doc.splitTextToSize(parrafo, contentWidth);
+      
+      lineas.forEach(linea => {
+        if (cursorY > 25) { 
+          doc.addPage();
+          cursorY = margin;
+          // Numerar nuevas páginas
+          doc.setFont("times", "normal");
+          doc.text(`${doc.internal.getNumberOfPages()}`, 19, 1.5);
+        }
+        doc.text(linea, margin, cursorY);
+        cursorY += 0.7; // Interlineado APA 7
+      });
+      cursorY += 0.3; // Espacio entre párrafos
+    });
+
+    doc.save(`Reporte_APA_${id}.pdf`);
+
+  } catch (error) {
+    console.error(error);
+    alert("Error al generar el PDF");
+  } finally {
+    setAiLoading(false);
+  }
+};
+  
   const handleSearch = () => {
     if (!id) return alert("Por favor ingresa un número de identificación");
 
@@ -97,10 +176,10 @@ function App() {
             display: 'inline-flex', padding: '10px 20px',
             background: 'white', borderRadius: '50px',
             boxShadow: '0 4px 15px rgba(255, 140, 0, 0.3)',
-            marginBottom: '20px', fontSize: '12px', fontWeight: '800',
+            marginBottom: '20px', fontSize: '15px', fontWeight: '800',
             color: '#FF8C00', border: '1px solid #FF8C00'
           }}>
-            SCRAPING WEB
+            O S I N T
           </div>
 
           <h1 className="neon-title" style={{ fontSize: '4.5rem', margin: '0 0 10px', textTransform: 'uppercase' }}>CONQUEROR</h1>
@@ -109,7 +188,7 @@ function App() {
             letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 40px',
             textShadow: '2px 2px 0px rgba(255,255,255,0.8), 0 0 20px rgba(255,255,255,0.8)'
           }}>
-            Los datos importantes en un solo click
+            Soberanía informativa para la defensa estratégica
           </p>
 
           <div className="glass-card" style={{ maxWidth: '800px', margin: '0 auto', padding: '40px', display: 'flex', gap: '20px' }}>
@@ -130,6 +209,35 @@ function App() {
             </button>
           </div>
         </div>
+
+        {searched && !loading.sri && !loading.ant && !loading.rp && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '40px', animation: 'fadeIn 0.8s ease-out' }}>
+            <button 
+              onClick={handleAiAnalysis}
+              disabled={aiLoading}
+              className="uide-btn"
+              style={{ 
+                background: 'linear-gradient(135deg, #003366 0%, #001a33 100%)',
+                color: 'white',
+                padding: '15px 40px',
+                borderRadius: '15px',
+                fontSize: '1.2rem',
+                fontWeight: '800',
+                boxShadow: '0 10px 20px rgba(0, 51, 102, 0.3)',
+                border: 'none',
+                cursor: aiLoading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '15px'
+              }}
+            >
+              {aiLoading ? (
+                <div style={{ width: '20px', height: '20px', border: '3px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+              ) : '🤖'} 
+              {aiLoading ? 'ANALIZANDO PERFIL...' : 'GENERAR REPORTE DE INTELIGENCIA (IA)'}
+            </button>
+          </div>
+        )}
 
         {/* Services Preview (Initial State) */}
         {!searched && (
