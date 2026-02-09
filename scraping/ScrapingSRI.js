@@ -4,6 +4,11 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 puppeteer.use(StealthPlugin());
 
 export const obtenerDatosRuc = async (ruc) => {
+  // Auto-correction: If it is a cedula (10 digits), add 001
+  if (ruc && ruc.length === 10) {
+    console.log(`ℹ️ Input looks like a Cedula. Appending '001' to make it a RUC.`);
+    ruc = ruc + '001';
+  }
   console.log(`🔍 Iniciando consulta SRI para RUC: ${ruc}`);
 
   // Iniciar Puppeteer en Windows
