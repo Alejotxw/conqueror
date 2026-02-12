@@ -21,6 +21,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3001", # Agregado según tu error
         "http://localhost:5173",
+        "http://localhost:5174", # Puerto alternativo de Vite
         "http://localhost:3000", # Puerto por defecto de Vite
     ], 
     allow_credentials=True,

@@ -25,6 +25,7 @@ const IconRP = () => (
 
 function App() {
   const [id, setId] = useState('');
+  const [showDisclaimer, setShowDisclaimer] = useState(true);
 
   // State for concurrent results
   const [results, setResults] = useState({ sri: null, ant: null, rp: null });
@@ -35,82 +36,82 @@ function App() {
   const [aiLoading, setAiLoading] = useState(false);
 
   const handleAiAnalysis = async () => {
-  setAiLoading(true);
-  try {
-    const response = await fetch('http://localhost:8000/consultar/analizar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(results) 
-    });
-    
-    const data = await response.json();
-    // Limpiamos los asteriscos que a veces envía la IA por error
-    const textoLimpio = data.analisis.replace(/\*\*/g, '');
-
-    const doc = new jsPDF({
-      orientation: 'p',
-      unit: 'cm',
-      format: 'letter'
-    });
-
-    const margin = 2.54; // Margen APA 7
-    const pageWidth = 21.59;
-    const contentWidth = pageWidth - (margin * 2);
-    let cursorY = margin + 1;
-
-    // 1. Numeración de página (Superior derecha)
-    doc.setFont("times", "normal");
-    doc.setFontSize(12);
-    doc.text("1", 19, 1.5);
-
-    // 2. Título del reporte (Negrita Real)
-    doc.setFont("times", "bold");
-    const tituloPrincipal = "Reporte de Análisis de Inteligencia de Datos";
-    const titleWidth = doc.getTextWidth(tituloPrincipal);
-    doc.text(tituloPrincipal, (pageWidth - titleWidth) / 2, cursorY);
-    
-    cursorY += 1.5; // Espaciado doble APA
-
-    // 3. Procesamiento del cuerpo del texto
-    doc.setFont("times", "normal");
-    const parrafos = textoLimpio.split('\n');
-
-    parrafos.forEach(parrafo => {
-      if (parrafo.trim() === "") return;
-
-      // Detectar si el párrafo parece un subtítulo (líneas cortas o mayúsculas)
-      if (parrafo.length < 60 && !parrafo.endsWith('.')) {
-        doc.setFont("times", "bold");
-      } else {
-        doc.setFont("times", "normal");
-      }
-
-      const lineas = doc.splitTextToSize(parrafo, contentWidth);
-      
-      lineas.forEach(linea => {
-        if (cursorY > 25) { 
-          doc.addPage();
-          cursorY = margin;
-          // Numerar nuevas páginas
-          doc.setFont("times", "normal");
-          doc.text(`${doc.internal.getNumberOfPages()}`, 19, 1.5);
-        }
-        doc.text(linea, margin, cursorY);
-        cursorY += 0.7; // Interlineado APA 7
+    setAiLoading(true);
+    try {
+      const response = await fetch('http://localhost:8000/consultar/analizar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(results)
       });
-      cursorY += 0.3; // Espacio entre párrafos
-    });
 
-    doc.save(`Reporte_APA_${id}.pdf`);
+      const data = await response.json();
+      // Limpiamos los asteriscos que a veces envía la IA por error
+      const textoLimpio = data.analisis.replace(/\*\*/g, '');
 
-  } catch (error) {
-    console.error(error);
-    alert("Error al generar el PDF");
-  } finally {
-    setAiLoading(false);
-  }
-};
-  
+      const doc = new jsPDF({
+        orientation: 'p',
+        unit: 'cm',
+        format: 'letter'
+      });
+
+      const margin = 2.54; // Margen APA 7
+      const pageWidth = 21.59;
+      const contentWidth = pageWidth - (margin * 2);
+      let cursorY = margin + 1;
+
+      // 1. Numeración de página (Superior derecha)
+      doc.setFont("times", "normal");
+      doc.setFontSize(12);
+      doc.text("1", 19, 1.5);
+
+      // 2. Título del reporte (Negrita Real)
+      doc.setFont("times", "bold");
+      const tituloPrincipal = "Reporte de Análisis de Inteligencia de Datos";
+      const titleWidth = doc.getTextWidth(tituloPrincipal);
+      doc.text(tituloPrincipal, (pageWidth - titleWidth) / 2, cursorY);
+
+      cursorY += 1.5; // Espaciado doble APA
+
+      // 3. Procesamiento del cuerpo del texto
+      doc.setFont("times", "normal");
+      const parrafos = textoLimpio.split('\n');
+
+      parrafos.forEach(parrafo => {
+        if (parrafo.trim() === "") return;
+
+        // Detectar si el párrafo parece un subtítulo (líneas cortas o mayúsculas)
+        if (parrafo.length < 60 && !parrafo.endsWith('.')) {
+          doc.setFont("times", "bold");
+        } else {
+          doc.setFont("times", "normal");
+        }
+
+        const lineas = doc.splitTextToSize(parrafo, contentWidth);
+
+        lineas.forEach(linea => {
+          if (cursorY > 25) {
+            doc.addPage();
+            cursorY = margin;
+            // Numerar nuevas páginas
+            doc.setFont("times", "normal");
+            doc.text(`${doc.internal.getNumberOfPages()}`, 19, 1.5);
+          }
+          doc.text(linea, margin, cursorY);
+          cursorY += 0.7; // Interlineado APA 7
+        });
+        cursorY += 0.3; // Espacio entre párrafos
+      });
+
+      doc.save(`Reporte_APA_${id}.pdf`);
+
+    } catch (error) {
+      console.error(error);
+      alert("Error al generar el PDF");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleSearch = () => {
     if (!id) return alert("Por favor ingresa un número de identificación");
 
@@ -144,6 +145,42 @@ function App() {
 
   return (
     <div style={{ width: '100%', minHeight: '100vh', position: 'relative' }}>
+
+      {/* Legal Disclaimer Modal */}
+      {showDisclaimer && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000, padding: '20px'
+        }}>
+          <div className="glass-card" style={{
+            maxWidth: '600px', width: '100%', padding: '40px', textAlign: 'center',
+            border: '2px solid rgba(255, 140, 0, 0.4)',
+            boxShadow: '0 0 30px rgba(255, 140, 0, 0.2)'
+          }}>
+            <h2 style={{ color: '#FF8C00', fontSize: '2rem', marginBottom: '20px', fontWeight: '900' }}>TÉRMINOS Y CONDICIONES</h2>
+            <div style={{
+              color: '#003366', fontSize: '1.1rem', lineHeight: '1.6',
+              marginBottom: '30px', textAlign: 'justify', fontWeight: '600'
+            }}>
+              <p>Este sistema es para fines estrictamente informativos y de investigación estratégica. Al utilizar esta herramienta, usted acepta que:</p>
+              <ul style={{ paddingLeft: '20px' }}>
+                <li>Los desarrolladores <strong>no se responsabilizan</strong> por el uso ilegal o inapropiado de la información obtenida.</li>
+                <li>Usted es el único responsable de las acciones realizadas con los datos consultados.</li>
+                <li>Este software se proporciona "tal cual", sin garantías sobre la exactitud de los datos externos (SRI, ANT, RP).</li>
+              </ul>
+            </div>
+            <button
+              onClick={() => setShowDisclaimer(false)}
+              className="uide-btn active"
+              style={{ width: '100%', padding: '15px', fontSize: '1.2rem', height: 'auto' }}
+            >
+              ACEPTO Y ENTIENDO LOS RIESGOS
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Side Neon Glows */}
       <div className="side-light-orange"></div>
@@ -212,11 +249,11 @@ function App() {
 
         {searched && !loading.sri && !loading.ant && !loading.rp && (
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '40px', animation: 'fadeIn 0.8s ease-out' }}>
-            <button 
+            <button
               onClick={handleAiAnalysis}
               disabled={aiLoading}
               className="uide-btn"
-              style={{ 
+              style={{
                 background: 'linear-gradient(135deg, #003366 0%, #001a33 100%)',
                 color: 'white',
                 padding: '15px 40px',
@@ -233,7 +270,7 @@ function App() {
             >
               {aiLoading ? (
                 <div style={{ width: '20px', height: '20px', border: '3px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-              ) : '🤖'} 
+              ) : '🤖'}
               {aiLoading ? 'ANALIZANDO PERFIL...' : 'GENERAR REPORTE DE INTELIGENCIA (IA)'}
             </button>
           </div>
@@ -283,7 +320,7 @@ function App() {
                   {showTableSRI && <div style={{ marginTop: '15px' }}><EstablecimientosTable establecimientos={results.sri.establecimientos} /></div>}
                 </>
               ) : results.sri?.error ? (
-                <ErrorMessage msg="Error consultando SRI" />
+                <ErrorMessage msg="Error consultando SRI\\" />
               ) : (loading.sri ? null : <div style={{ padding: '20px', textAlign: 'center', color: '#888' }}>No se encontraron datos en el SRI</div>)}
             </ResultCard>
 
@@ -369,6 +406,14 @@ function App() {
            gap: 12px;
         }
         .card-body { padding: 20px; flex: 1; }
+
+        .glass-card {
+          background: rgba(255, 255, 255, 0.85);
+          backdrop-filter: blur(15px);
+          border-radius: 25px;
+          border: 1px solid rgba(255, 255, 255, 0.5);
+          box-shadow: 0 15px 35px rgba(0, 51, 102, 0.1);
+        }
       `}</style>
     </div>
   )
