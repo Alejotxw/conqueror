@@ -32,6 +32,7 @@ function App() {
   const [loading, setLoading] = useState({ sri: false, ant: false, rp: false });
   const [searched, setSearched] = useState(false); // To show "No results" or initial state
   const [showTableSRI, setShowTableSRI] = useState(false);
+  const [globalError, setGlobalError] = useState(null); // Nuevo estado para error global
 
   const [aiLoading, setAiLoading] = useState(false);
 
@@ -43,6 +44,11 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(results)
       });
+
+      if (response.status === 429) {
+        setGlobalError("Limite de consultas de IA excedido. Espere 2 minutos.");
+        return;
+      }
 
       const data = await response.json();
       // Limpiamos los asteriscos que a veces envía la IA por error
@@ -112,35 +118,38 @@ function App() {
     }
   };
 
+  const fetchData = async (url, key) => {
+    try {
+      const res = await fetch(url);
+      if (res.status === 429) {
+        // En lugar de guardar el error en results, activamos el error global
+        setGlobalError("Limite de seguridad alcanzado (3 intentos). Por favor espere 2 minutos.");
+        return;
+      }
+      if (!res.ok) throw new Error("Error en la petición");
+      const data = await res.json();
+      setResults(prev => ({ ...prev, [key]: data }));
+    } catch (err) {
+      setResults(prev => ({ ...prev, [key]: { error: true, message: "Error consultando servicio" } }));
+    } finally {
+      setLoading(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
   const handleSearch = () => {
     if (!id) return alert("Por favor ingresa un número de identificación");
 
     setSearched(true);
+    setGlobalError(null); // Reset global error
     // Reset previous results and set loading
     setResults({ sri: null, ant: null, rp: null });
     setLoading({ sri: true, ant: true, rp: true });
     setShowTableSRI(false);
 
-    // Fetch SRI
-    fetch(`http://localhost:8000/consultar/sri/${id}`)
-      .then(res => res.json())
-      .then(data => setResults(prev => ({ ...prev, sri: data })))
-      .catch(err => setResults(prev => ({ ...prev, sri: { error: true } })))
-      .finally(() => setLoading(prev => ({ ...prev, sri: false })));
-
-    // Fetch ANT
-    fetch(`http://localhost:8000/consultar/ant/${id}`)
-      .then(res => res.json())
-      .then(data => setResults(prev => ({ ...prev, ant: data })))
-      .catch(err => setResults(prev => ({ ...prev, ant: { error: true } })))
-      .finally(() => setLoading(prev => ({ ...prev, ant: false })));
-
-    // Fetch RP
-    fetch(`http://localhost:8000/consultar/rp/${id}`)
-      .then(res => res.json())
-      .then(data => setResults(prev => ({ ...prev, rp: data })))
-      .catch(err => setResults(prev => ({ ...prev, rp: { error: true } })))
-      .finally(() => setLoading(prev => ({ ...prev, rp: false })));
+    // Fetch All Concurrent
+    fetchData(`http://localhost:8000/consultar/sri/${id}`, 'sri');
+    fetchData(`http://localhost:8000/consultar/ant/${id}`, 'ant');
+    fetchData(`http://localhost:8000/consultar/rp/${id}`, 'rp');
   };
 
   return (
@@ -247,7 +256,23 @@ function App() {
           </div>
         </div>
 
-        {searched && !loading.sri && !loading.ant && !loading.rp && (
+        {/* Global Error Message */}
+        {globalError && (
+          <div style={{
+            maxWidth: '800px', margin: '0 auto 40px', padding: '20px',
+            background: 'rgba(255, 245, 245, 0.9)', border: '2px solid #FC8181',
+            borderRadius: '15px', textAlign: 'center',
+            boxShadow: '0 5px 15px rgba(197, 48, 48, 0.2)',
+            animation: 'fadeIn 0.5s ease-out'
+          }}>
+            <h3 style={{ color: '#C53030', margin: '0 0 10px', fontSize: '1.5rem' }}>ACCESO DENEGADO TEMPORALMENTE</h3>
+            <p style={{ color: '#2D3748', fontSize: '1.1rem', fontWeight: '600' }}>
+              {globalError}
+            </p>
+          </div>
+        )}
+
+        {searched && !globalError && !loading.sri && !loading.ant && !loading.rp && (
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '40px', animation: 'fadeIn 0.8s ease-out' }}>
             <button
               onClick={handleAiAnalysis}
@@ -289,7 +314,7 @@ function App() {
         )}
 
         {/* Results Dashboard Grid */}
-        {searched && (
+        {searched && !globalError && (
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))',
@@ -320,7 +345,7 @@ function App() {
                   {showTableSRI && <div style={{ marginTop: '15px' }}><EstablecimientosTable establecimientos={results.sri.establecimientos} /></div>}
                 </>
               ) : results.sri?.error ? (
-                <ErrorMessage msg="Error consultando SRI\\" />
+                <ErrorMessage msg={results.sri.message || "Error consultando SRI"} />
               ) : (loading.sri ? null : <div style={{ padding: '20px', textAlign: 'center', color: '#888' }}>No se encontraron datos en el SRI</div>)}
             </ResultCard>
 
@@ -331,7 +356,7 @@ function App() {
                   <AntTable citations={results.ant} />
                 </div>
               ) : results.ant?.error ? (
-                <ErrorMessage msg="Error consultando ANT" />
+                <ErrorMessage msg={results.ant.message || "Error consultando ANT"} />
               ) : (loading.ant ? null : <div style={{ padding: '20px', textAlign: 'center', color: '#888' }}>No registra citaciones o datos en ANT</div>)}
             </ResultCard>
 
@@ -342,7 +367,7 @@ function App() {
                   <RpTable registros={results.rp.registros || results.rp} />
                 </div>
               ) : results.rp?.error ? (
-                <ErrorMessage msg="Error consultando Registro de la Propiedad" />
+                <ErrorMessage msg={results.rp.message || "Error consultando Registro de la Propiedad"} />
               ) : (loading.rp ? null : <div style={{ padding: '20px', textAlign: 'center', color: '#888' }}>No registra propiedades</div>)}
             </ResultCard>
 

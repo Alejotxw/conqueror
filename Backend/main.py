@@ -1,13 +1,27 @@
 import os
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
 from openai import AsyncOpenAI
 
+# Rate limiting
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
 load_dotenv()
 
+# Configuración de Rate Limiter (3 peticiones por minuto por IP)
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(title="Backend de Consultas Ecuador")
+
+# Registrar el manejador de excepciones de límite de velocidad
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
 client_deepseek = AsyncOpenAI(
     api_key=os.getenv("DEEPSEEK_API_KEY"),
     base_url="https://api.deepseek.com"
@@ -34,7 +48,8 @@ app.add_middleware(
 SCRAPER_SERVICE_URL = "http://127.0.0.1:3001/api"
 
 @app.post("/consultar/analizar")
-async def analizar_informacion(data: dict = Body(...)):
+@limiter.limit("3/2minute")
+async def analizar_informacion(request: Request, data: dict = Body(...)):
     """
     Recibe los datos obtenidos de SRI/ANT/RP y los analiza con DeepSeek
     """
@@ -63,7 +78,8 @@ async def root():
 
 # 3. Endpoint para SRI
 @app.get("/consultar/sri/{ruc}")
-async def consultar_sri(ruc: str):
+@limiter.limit("3/2minute")
+async def consultar_sri(request: Request, ruc: str):
     async with httpx.AsyncClient(timeout=120.0) as client:
         try:
             response = await client.get(f"{SCRAPER_SERVICE_URL}/sri/{ruc}")
@@ -75,7 +91,8 @@ async def consultar_sri(ruc: str):
 # Modifica tus funciones en main.py así:
 # Modifica tus funciones en main.py así:
 @app.get("/consultar/ant/{cedula}")
-async def consultar_ant(cedula: str):
+@limiter.limit("3/2minute")
+async def consultar_ant(request: Request, cedula: str):
     async with httpx.AsyncClient(timeout=80.0) as client: # Aumentamos timeout
         try:
             response = await client.get(f"{SCRAPER_SERVICE_URL}/ant/{cedula}")
@@ -92,7 +109,8 @@ async def consultar_ant(cedula: str):
 
 # 5. Endpoint para Registro de la Propiedad (RP)
 @app.get("/consultar/rp/{cedula}")
-async def consultar_rp(cedula: str):
+@limiter.limit("3/2minute")
+async def consultar_rp(request: Request, cedula: str):
     async with httpx.AsyncClient(timeout=120.0) as client:
         try:
             response = await client.get(f"{SCRAPER_SERVICE_URL}/rp/{cedula}")
